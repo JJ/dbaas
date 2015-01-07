@@ -83,5 +83,33 @@ client.hkeys("un_foo", function (err, replies) {
 });
 ```
 
-El programa tiene tres partes: 
+El programa tiene tres partes. En la primera se conecta al DBaaS que
+previamente hemos tenido que crear en RedisLabs o, para el caso, en
+nuestro propio ordenador. Las credenciales para acceder al sitio están
+metidas en una variable de entorno, REDISCLOUD_URL. El URL de esa variable te la
+habrán asignado en redislabs cuando hayas creado un recurso gratuito,
+y será por el estilo de
+`pub-redis-12345.us-east-1-2.3.ec2.garantiadata.com:12345`, pero
+tendrás que combinarla con la clave para acceder a la base de datos de
+esta forma:
+
+	export REDISCLOUD_URL=http://daigual:esta_es_la_clave@cosas.garantiadata.com:12345
+
+; lo que tendrás que escribir en la línea de órdenes y nunca, nunca,
+dejar en el sistema de control de fuentes. 
+Es un URL un tanto complejo, pero la parte principal es la que hay
+detrás del `//`, de la forma `usuario:clave@dominio:puerto`. Es imprescindible
+autenticarse, para que sólo uno pueda usar el recurso. En realidad, el
+usuario no se usa, por eso pone `daigual`, sin embargo la clave es la
+que estableceremos para el recurso cuando nos demos de alta; por
+defecto, es la misma que se usa para la cuenta general, aunque puedes
+establecer claves específicas para cada uno de los depósitos de
+datos. Previamente a esto habrá que haber creado una *suscripción* de
+Redis en "My Resources -> Manage"; hay derecho al menos a uno gratuito
+por persona aunque sólo te permiten
+[25 MB y 10 conexiones simultáneas](https://redislabs.com/pricing).
+
+>Redis, de todas formas, es software libre y puedes instalarlo sin
+>ninguna limitación en tu propio alojamiento si lo tienes o en tu
+>IaaS.
 
