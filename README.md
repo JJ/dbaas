@@ -45,12 +45,12 @@ tiene buen soporte en JavaScript, tanto en cliente como en node.
 >[texto introductorio](https://www.amazon.es/dp/B00HXL8QA0?tag=atalaya-21&camp=3634&creative=24822&linkCode=as4&creativeASIN=B00HXL8QA0&adid=1TS47T651FGQTKED28CV&)
 >por menos de un euro en Amazon (o libre en GitHub).
 
-En vez de ir característica por característica, vamos a empezar
+En vez de ir [característica por característica u orden por orden (que, además, son un montón)](http://redis.io/commands), vamos a empezar
 trabajando con un sistema cliente-servidor para hacer porras
 futbolísticas con el que seguiremos trabajando más adelante. Pero
-antes, una aproximación básica a redis en [el siguiente programa](https://github.com/JJ/node-app-cc/blob/master/redis.js), que
+antes, una aproximación básica a Redis en [el siguiente programa](https://github.com/JJ/node-app-cc/blob/master/redis.js), que
 prueba las principales características trabajando con pares
-variable-valor y *hashes*
+variable-valor y *hashes*:
 
 ```javascript
 #!/usr/bin/env node
@@ -144,3 +144,172 @@ Redis), también funciona de esta forma.
 > variables asignadas a un solo valor (el nombre del conjunto). Crear
 > un programa que cree un conjunto, el de todas las porras existentes,
 > por ejemplo.
+
+Es importante también que el cliente de Redis se cierre, como se hace
+en la penúltima línea con `client.end();`. Si no, el programa queda en espera. Esa orden,
+efectivamente, termina el programa (aparte del cliente de
+Redis). Cualquier programa en Redis tiene que terminar de esa forma.
+
+## Poniendo en práctica Redis en porr.io
+
+El problema principal con Redis es rediseñar la aplicación desde
+nuestra mente base-de-datos-relacional para aprovechar sus
+fortalezas. Redis almacena estructuras de datos sólo indexadas por
+clave. Se puede acceder a todas las claves o hacer búsquedas con
+patrones. Con los resultados del ejemplo anterior se puede instalar el
+cliente de redis (`sudo apt-get redis-cli`) y acceder de esta forma
+
+```
+redis-cli -h pub-redis-12345.us-east-1-2.3.ec2.garantiadata.com -p
+12345 -a esta-es-la-clave
+```
+
+es decir, usando el URL anterior (que se pasa con la opción `-h` a la
+línea de órdenes) y la clave que hayamos establecido (con `-a`) y
+podemos hacer consultas usando las órdenes de Redis, por ejemplo:
+
+```
+pub-redis-12345.us-east-1-2.3.ec2.garantiadata.com:12345> keys *
+1) "Granada-C\xc3\xb3rdoba-Liga-2018"
+2) "zape"
+3) "un_foo"
+...
+```
+
+Aunque las claves estén almacenadas al alimón, en realidad las órdenes
+que se pueden aplicar sobre ellas son diferentes: `zape` tenía
+asignada una cadena, y `un_foo` un hash. Eso lo averiguamos con `type`
+
+```
+pub-redis-12345.us-east-1-2.3.ec2.garantiadata.com:12345> type "zape"
+string
+pub-redis-12345.us-east-1-2.3.ec2.garantiadata.com:12345> type "un_foo"
+hash
+```
+
+Con esto, la estrategia de usar tablas para cosas se va un poco por
+ahí. Tenemos que pensar en almacenar claves, con un criterio.
+razonable, y poder recuperarlas en función del contenido de
+claves. Afortunadamente, Redis es muy rápido y el hecho de que no se
+puedan hacer merges realmente no importa demasiado. Es más, la
+complejidad de las peticiones y el tiempo que tardan no depende del
+número de claves que haya.
+
+Como buena práctica lo que se suele hacer es usar *prefijos* separados
+por `:` para distribuir las claves en diferentes "espacios de
+nombres". Por ejemplo, podíamos meter todas claves referidas a porras
+en el espacio `porra:` y podriamos buscarlas usando `keys
+"porra:*"`. Algo así hacemos en el siguiente programa:
+
+```
+#!/usr/bin/env node
+
+var redis = require('redis');
+var url = require('url');
+
+var apuesta = require("./Apuesta.js"),
+porra = require("./Porra.js");
+
+var redisURL = url.parse(process.env.REDISCLOUD_URL);
+var client = redis.createClient(redisURL.port, redisURL.hostname, {no_ready_check: true, auth_pass: redisURL.auth.split(":")[1]});
+
+var esta_porra = new porra.Porra("FLA", "FLU", "Premier", 1950+Math.floor(Math.random()*70) );
+console.log(esta_porra);
+for ( var i in esta_porra.vars() ) {
+    client.hset(esta_porra.ID, "var:"+esta_porra.vars()[i], esta_porra[i], redis.print);
+}
+
+var bettors = ['UNO', 'OTRO','OTROMAS'];
+
+for ( var i in bettors ) {
+    var esta_apuesta = new apuesta.Apuesta(esta_porra, bettors[i], Math.floor(Math.random()*5), Math.floor(Math.random()*4) );
+    client.hset(esta_porra.ID, "bet:"+esta_apuesta.quien, esta_apuesta.resultado());
+    client.sadd(esta_porra.ID+":"+esta_apuesta.resultado(), esta_apuesta.quien,redis.print );
+    
+}
+
+client.hkeys(esta_porra.ID, function (err, replies) {
+    console.log( 'hkeys');
+    replies.forEach(function (reply, i) {
+        console.log("    " + i + ": " + reply);
+    });
+    console.log( "End " );
+    client.end();
+});
+```
+
+El
+[programa, denominado obviamente `porredis.js`](https://github.com/JJ/node-app-cc/)
+también se divide en varias partes. La primera parte es la conexión a
+la base de datos, que es exactamente igual que en el programa
+anterior. A continuación se crea una porra con elementos aleatorios
+(el año) para que se cree ligeramente diferente en cada ejecución. 
+
+> Si tenéis curiosidad de qué se trata esta porra, es del célebre
+> [derby entre el Fluminense y el Flamingo](http://es.wikipedia.org/wiki/Fla-Flu),
+> tradicionales rivales del estado de Río de Janeiro.
+
+Vamos a usar un HSET para almacenar cada porra, y usamos un campo con
+el prefijo `var` para cada una de las variables de la porra; como
+clave usamos la propia clave de la porra. Esta clave la vamos a usar
+para almacenar todo y además tiene elementos para acceder rápidamente
+a todas las porras de un año o de un equipo.
+
+Las apuestas de la porra, con tres apostadores, las generamos
+aleatoriamente también en el siguiente bloque. Almacenamos las
+apuestas en dos sitios. En una BD relacional esto sería anatema, pero
+aquí no es un gran problema: Redis es suficientemente rápido, y se
+trata de que podamos acceder rápidamente a la información. Vamos a
+usar el mismo hash para almacenar los nombres de los apostantes, y
+conjuntos para almacenar todos los que han apostado por un resultado
+determinado. De esa forma, a partir del ID de una porra y del
+resultado podemos acceder, en una sola petición, a los ganadores de la
+misma, si es que los hay. Por ejemplo, se busca así todos los
+resultados de una porra:
+
+```
+pub-redis-13876.us-east-1-2.3.ec2.garantiadata.com:13876> keys "FLA-FLU*1998:*"
+1) "FLA-FLU-Premier-1998:4-2"
+2) "FLA-FLU-Premier-1998:3-2"
+```
+
+(se puede hacer algo equivalente desde el cliente en node). Y una vez
+localizado el resultado,
+
+```
+pub-redis-13876.us-east-1-2.3.ec2.garantiadata.com:13876> smembers "FLA-FLU-Premier-1998:3-2"
+1) "OTRO"
+2) "OTROMAS"
+```
+
+que da como afortunados ganadores a OTRO y a OTROMAS. Siempre
+aciertan, los tíos.
+
+El último bloque del programa recupera todas las apuestas que haya
+almacenadas para una porra determinada, las tres que se han hecho. El
+resultado será algo así:
+
+```
+Reply: 1
+Reply: 1
+Reply: 1
+Reply: 1
+Reply: 1
+Reply: 1
+Reply: 1
+hkeys
+    0: var:local
+    1: var:visitante
+    2: var:competition
+    3: var:year
+    4: bet:UNO
+    5: bet:OTRO
+    6: bet:OTROMAS
+End 
+```
+Las primeras `Reply`s son el número de registros insertados. El resto
+muestra las claves del *hash* que se ha creado, que serán siempre las
+mismas. Por supuesto, la final del programa se cierra el cliente.
+
+>Hacer un programa que recupere los ganadores de una porra almacenados
+>en Redis.
