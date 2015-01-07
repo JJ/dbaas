@@ -240,4 +240,76 @@ client.hkeys(esta_porra.ID, function (err, replies) {
 
 El
 [programa, denominado obviamente `porredis.js`](https://github.com/JJ/node-app-cc/)
-también se divide en varias partes.
+también se divide en varias partes. La primera parte es la conexión a
+la base de datos, que es exactamente igual que en el programa
+anterior. A continuación se crea una porra con elementos aleatorios
+(el año) para que se cree ligeramente diferente en cada ejecución. 
+
+> Si tenéis curiosidad de qué se trata esta porra, es del célebre
+> [derby entre el Fluminense y el Flamingo](http://es.wikipedia.org/wiki/Fla-Flu),
+> tradicionales rivales del estado de Río de Janeiro.
+
+Vamos a usar un HSET para almacenar cada porra, y usamos un campo con
+el prefijo `var` para cada una de las variables de la porra; como
+clave usamos la propia clave de la porra. Esta clave la vamos a usar
+para almacenar todo y además tiene elementos para acceder rápidamente
+a todas las porras de un año o de un equipo.
+
+Las apuestas de la porra, con tres apostadores, las generamos
+aleatoriamente también en el siguiente bloque. Almacenamos las
+apuestas en dos sitios. En una BD relacional esto sería anatema, pero
+aquí no es un gran problema: Redis es suficientemente rápido, y se
+trata de que podamos acceder rápidamente a la información. Vamos a
+usar el mismo hash para almacenar los nombres de los apostantes, y
+conjuntos para almacenar todos los que han apostado por un resultado
+determinado. De esa forma, a partir del ID de una porra y del
+resultado podemos acceder, en una sola petición, a los ganadores de la
+misma, si es que los hay. Por ejemplo, se busca así todos los
+resultados de una porra:
+
+```
+pub-redis-13876.us-east-1-2.3.ec2.garantiadata.com:13876> keys "FLA-FLU*1998:*"
+1) "FLA-FLU-Premier-1998:4-2"
+2) "FLA-FLU-Premier-1998:3-2"
+```
+
+(se puede hacer algo equivalente desde el cliente en node). Y una vez
+localizado el resultado,
+
+```
+pub-redis-13876.us-east-1-2.3.ec2.garantiadata.com:13876> smembers "FLA-FLU-Premier-1998:3-2"
+1) "OTRO"
+2) "OTROMAS"
+```
+
+que da como afortunados ganadores a OTRO y a OTROMAS. Siempre
+aciertan, los tíos.
+
+El último bloque del programa recupera todas las apuestas que haya
+almacenadas para una porra determinada, las tres que se han hecho. El
+resultado será algo así:
+
+```
+Reply: 1
+Reply: 1
+Reply: 1
+Reply: 1
+Reply: 1
+Reply: 1
+Reply: 1
+hkeys
+    0: var:local
+    1: var:visitante
+    2: var:competition
+    3: var:year
+    4: bet:UNO
+    5: bet:OTRO
+    6: bet:OTROMAS
+End 
+```
+Las primeras `Reply`s son el número de registros insertados. El resto
+muestra las claves del *hash* que se ha creado, que serán siempre las
+mismas. Por supuesto, la final del programa se cierra el cliente.
+
+>Hacer un programa que recupere los ganadores de una porra almacenados
+>en Redis.
