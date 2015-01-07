@@ -117,3 +117,34 @@ por persona aunque sólo te permiten
 >ninguna limitación en tu propio alojamiento si lo tienes o en tu
 >IaaS.
 
+La siguiente parte del programa es la que establece un par
+variable-valor: `zipi - zape`, es decir, que asociamos a la clave
+`zipi` el valor `zape`; a continuación lo recuperamos usando la forma
+asíncrona habitual de node: se solicita el valor y se le pasa una
+función *callback* a la que se llame cuando se haya recibido la
+respuesta.
+
+>En realidad y teniendo en cuenta que es asíncrono, no podemos
+>recuperar el valor hasta que hayamos recibido el callback; es un
+>error poner las órdenes de esta forma porque puede suceder que cuando
+>se trate de recuperar el valor todavía no se haya establecido en el
+>servidor. En este caso, sin embargo, funciona por la rapidez de
+>Redis, aunque no tiene por qué funcionar en todos los casos.
+
+El tercer bloque trabaja con un [HSET](http://redis.io/commands/HSET),
+un conjunto de pares clave-valor indexados, a su vez, con una sola
+clave. Redis tiene varios tipos de datos y tratándose de una base de
+datos NoSQL,
+[sus propios comandos para acceder a los mismos](http://openmymind.net/2011/11/8/Redis-Zero-To-Master-In-30-Minutes-Part-1/). Usamos
+dos sentencias con la misma clave, `un_foo`, que será la clave del
+HSET, y le asignamos dos pares variable-valor. Es una estructura de
+datos un poco más compleja, que nos puede servir para almacenar las
+porras más adelante. Como en el caso anterior, convendría haberlo
+hecho esto de forma asíncrona, pero también, y en general (y en
+Redis), también funciona de esta forma.
+
+> Redis también permite trabajar con conjuntos usando la orden
+> [SADD](http://redis.io/commands/sadd). Se trataría de varias
+> variables asignadas a un solo valor (el nombre del conjunto). Crear
+> un programa que cree un conjunto, el de todas las porras existentes,
+> por ejemplo.
