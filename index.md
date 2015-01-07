@@ -57,8 +57,6 @@ prueba las principales características trabajando con pares
 variable-valor y *hashes*:
 
 ```javascript
-#!/usr/bin/env node
-
 var redis = require('redis');
 var url = require('url');
 
@@ -206,8 +204,6 @@ en el espacio `porra:` y podriamos buscarlas usando `keys
 "porra:*"`. Algo así hacemos en el siguiente programa:
 
 ```
-#!/usr/bin/env node
-
 var redis = require('redis');
 var url = require('url');
 
@@ -240,6 +236,7 @@ client.hkeys(esta_porra.ID, function (err, replies) {
     console.log( "End " );
     client.end();
 });
+
 ```
 
 El
