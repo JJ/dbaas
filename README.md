@@ -1,7 +1,3 @@
----
-layout: index
----
-
 Introducción a las bases de datos como servicio
 =====
 
