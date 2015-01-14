@@ -309,3 +309,87 @@ mismas. Por supuesto, la final del programa se cierra el cliente.
 
 >Hacer un programa que recupere los ganadores de una porra almacenados
 >en Redis.
+
+También hay bases de datos SQL que se pueden usar desde la nube. Por
+ejemplo, [ElephantSQL](http://www.elephantsql.com/) ofrece la base de
+datos PostgreSQL como un servicio, también en modo Freemium. El modo
+[gratuito ofrece 20 megas](http://www.elephantsql.com/plans.html) y
+cinco conexiones concurrentes, pero para pruebas y prototipos es
+suficiente.
+
+Como en el caso anterior, se usa un URL de conexión para acceder a los
+servicios, algo del tipo
+
+	postgres://usuario:clave@fizzy-cherry.db.elephantsql.com:5432/usuario
+
+al que puedes acceder, tras crear un servicio, en
+[el área de cliente](https://customer.elephantsql.com/customer/).
+
+Una vez establecida la conexión, el resto del acceso se hace de forma
+tradicional, como en el siguiente programa
+
+	#!/usr/bin/env node
+
+	var fs = require('fs')
+	, pg = require('pg')
+	, connectionString = process.env.DATABASE_URL;
+
+	var apuesta = require("./Apuesta.js");
+	var porra = require("./Porra.js");
+
+	var client = new pg.Client(connectionString);
+	client.connect();
+
+	// Crea la base de datos
+	var create_sql = fs.readFileSync("porrio.sql","utf8");
+	console.log(create_sql);
+	var query = client.query(create_sql);
+	query.on('end', function() { 
+
+		console.log("Creada");
+		client.end();
+	});
+
+Este programa crea las dos tablas que se van a usar para almacenar los
+datos. `porrio.sql` contiene una declaración SQL así:
+
+	CREATE TABLE IF NOT EXISTS  apuesta(partido varchar(50), 
+       quien_apuesta varchar(50) not null, 
+       goles_local  int not null,
+       goles_visitante  int not null);
+
+	CREATE TABLE IF NOT EXISTS partido( id varchar(50) not null primary key,
+       equipo_local varchar(50) not null,
+       equipo_visitante varchar(50) not null, 
+       competicion varchar(20)  not null,
+       year  int not null);
+
+Donde es importante que añadamos `IF NOT EXISTS` para que no dé error
+cuando ejecutemos el programa por segunda vez. Estas tablas almacenan
+los datos de las porras y las apuestas de las mismas y, por integridad
+referencial, la apuesta almacena el ID del partido que tiene que estar
+en la otra tabla.
+
+El programa conecta usando el URL de conexión, que se ha leído de una
+variable de entorno también como es habitual; el fichero con la
+definición de la tabla se lee de forma síncrona, pero la petición,
+tras la declaración de la misma con `client.query`, se hace de forma
+asíncrona: cuando termina la petición se cierra el cliente. Como en el
+caso de Redis más arriba, el cliente mantiene el programa en ejecución
+si no se cierra explícitamente.
+
+Por otro lado, usamos el
+[driver `Pg` de Postgres para node](https://github.com/brianc/node-postgres). El
+método que hemos usado, `query`, sirve para cualquier orden SQL, pero
+admite una serie de plugins que permite acceder a las características
+de Postgres: transacciones y tipos, por ejemplo.
+
+## A donde ir desde aquí
+
+Generalmente, un DBaaS se va a usar desde un PaaS o desde un
+IaaS. Desde aquí se puede pasar al
+[capítulo sobre PaaS](http://jj.github.io/trabajando-con-paas/), que
+admiten bases de datos como funcionalidad adicional, entre ellas las
+dos que se han mencionado en este capítulo.
+
+
