@@ -20,7 +20,7 @@ encajan mejor dentro de este texto que de ningún otro sitio, aunque en
 realidad no son una solución completa, sino que se tienen que combinar
 con un PaaS o un IaaS para crear una aplicación. Sin embargo, es
 conveniente tener conocimiento de ellas, puesto que los PaaS a que se
-verán a continación las usan.
+verán a continuación las usan.
 
 Los DBaaS ofrecen acceso tanto bases de datos clásicas, es decir, con
 el lenguaje SQL, como a bases de datos *sin esquemas* o NoSQL como
@@ -197,7 +197,7 @@ número de claves que haya.
 Como buena práctica lo que se suele hacer es usar *prefijos* separados
 por `:` para distribuir las claves en diferentes "espacios de
 nombres". Por ejemplo, podíamos meter todas claves referidas a porras
-en el espacio `porra:` y podriamos buscarlas usando `keys
+en el espacio `porra:` y podríamos buscarlas usando `keys
 "porra:*"`. Algo así hacemos en el siguiente programa:
 
 	var redis = require('redis');
@@ -379,10 +379,10 @@ caso de Redis más arriba, el cliente mantiene el programa en ejecución
 si no se cierra explícitamente.
 
 Por otro lado, usamos el
-[driver `Pg` de Postgres para node](https://github.com/brianc/node-postgres). El
+[driver `Pg` de PostgreSQL para node](https://github.com/brianc/node-postgres). El
 método que hemos usado, `query`, sirve para cualquier orden SQL, pero
 admite una serie de plugins que permite acceder a las características
-de Postgres: transacciones y tipos, por ejemplo.
+de PostgreSQL: transacciones y tipos, por ejemplo.
 
 ## A donde ir desde aquí
 
